@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/WigWagCo/mustache"
+	"github.com/armPelionEdge/mustache"
 )
 
 const ARCH_PREFIX = "ARCH_"
