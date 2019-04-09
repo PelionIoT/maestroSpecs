@@ -21,6 +21,10 @@ import (
 
 // PlatformReader interface spec. Exported platforms should expose an instance of this interface named 'PlatformReader'
 type PlatformReader interface {
+	// SetOptsPlatform is called upon intitialization of the platform reader
+	// an implementation is not required to do anyything, but this can allow the reader
+	// to setup correctly
+	SetOptsPlatform(map[string]interface{}) (err error)
 	GetPlatformVars(dict *templates.TemplateVarDictionary, log Logger) (err error)
 }
 
