@@ -151,6 +151,7 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 				errinner = fmt.Errorf("need ptr to struct not struct: @ %s", prefix)
 				return
 			}
+
 			// XXX Work around, make a pointer to the value
 			// XXX reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
 			// no - we fixed this below with .Addr().Interface()

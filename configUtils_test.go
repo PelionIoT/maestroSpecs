@@ -304,6 +304,7 @@ func TestDeeperConf1Ptr(t *testing.T) {
 	hookMagic.OnChangesStart(func(g string) {
 		fmt.Printf("ChangesStart( %s ) hookMagic\n", g)
 		//		log.Fatal("Shold not be called - no change here")
+		startsN++
 	})
 
 	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
@@ -355,10 +356,10 @@ func TestDeeperConf1Ptr(t *testing.T) {
 
 	fmt.Printf("s1: %+v\n", s1)
 
-	if changesN != 1 {
+	if changesN != 3 {
 		log.Fatal("Saw invalid amount of changes.")
 	}
-	if startsN != 1 {
+	if startsN != 2 {
 		log.Fatal("Saw invalid amount of start changes.")
 	}
 
@@ -394,6 +395,7 @@ func TestDeeperConf2Ptr(t *testing.T) {
 	hookMagic.OnChangesStart(func(g string) {
 		fmt.Printf("ChangesStart( %s ) hookMagic\n", g)
 		//		log.Fatal("Shold not be called - no change here")
+		startsN++
 	})
 
 	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
@@ -410,6 +412,7 @@ func TestDeeperConf2Ptr(t *testing.T) {
 	hookStuff.OnChangesStart(func(g string) {
 		fmt.Printf("ChangesStart( %s ) hookStuff\n", g)
 		//		log.Fatal("Shold not be called - no change here")
+		startsN++
 	})
 
 	hookStuff.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
@@ -452,6 +455,9 @@ func TestDeeperConf2Ptr(t *testing.T) {
 	s1.Stuff = new(WizardStuff)
 	s2.Stuff = new(WizardStuff)
 
+	s1.Friends.Nobody = "what"
+	s2.Friends.Nobody = "nuttn"
+
 	s1.Stuff.NumberOfPotions = 3
 	s2.Stuff.NumberOfPotions = 7
 
@@ -466,11 +472,17 @@ func TestDeeperConf2Ptr(t *testing.T) {
 	fmt.Printf("s1: %+v\n", s1)
 	fmt.Printf("s1.Stuff: %+v\n", s1.Stuff)
 
-	if changesN != 1 {
+	fmt.Printf("startsN = %d  changesN = %d\n", startsN, changesN)
+
+	if changesN != 4 {
 		log.Fatal("Saw invalid amount of changes.")
 	}
-	if startsN != 1 {
+	if startsN != 3 {
 		log.Fatal("Saw invalid amount of start changes.")
+	}
+
+	if s1.Friends.Nobody != "what" {
+		log.Fatal("No tagged field should not change.")
 	}
 
 	fmt.Printf("s1.Harry = %s\n", s1.Harry)
