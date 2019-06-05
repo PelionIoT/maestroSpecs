@@ -492,3 +492,211 @@ func TestDeeperConf2Ptr(t *testing.T) {
 	}
 
 }
+
+func TestNonCongruentStructs(t *testing.T) {
+	fmt.Printf("TestNonCongruentStructs\n")
+
+	a := NewConfigAnalyzer("magicTag")
+
+	if a == nil {
+		log.Fatal("Failed to create config analyzer object")
+	}
+
+	// ChangesStart(configgroup string)
+	// // SawChange is called whenever a field changes. It will be called only once for each field which is changed.
+	// // It will always be called after ChangesStart is called
+	// SawChange(configgroup string, fieldchanged string, value interface{})
+	// // ChangesComplete is called when all changes for a specific configgroup tagname
+	// ChangesComplete(configgroup string)
+
+	changesN := 0
+	startsN := 0
+
+	hookMagic := new(testHook)
+
+	hookMagic.OnChangesStart(func(g string) {
+		fmt.Printf("ChangesStart( %s ) hookMagic\n", g)
+		log.Fatal("Shold not be called - no change here")
+	})
+
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
+		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
+		changesN++
+		return true
+	})
+
+	a.AddHook("groupMagic", hookMagic)
+
+	hookDum := new(testHook)
+
+	hookDum.OnChangesStart(func(g string) {
+		fmt.Printf("ChangesStart( %s ) hookDum\n", g)
+		startsN++
+	})
+
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
+		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
+		changesN++
+		return true
+	})
+
+	a.AddHook("groupDumbledore", hookDum)
+
+	s1 := new(testStruct1)
+	s2 := new(sortOfTestStruct1)
+	s1.AString = "funny"
+	s2.AString = "funny"
+	s1.AnInt = 3
+	s2.AnInt = 3
+	s1.Dumbledore = "yeap"
+	s2.Dumbledore = "yeap"
+	s1.Harry = "harry"
+	s2.Harry = "notharry"
+
+	same, noaction, err := a.CallChanges(s1, s2)
+
+	if err != nil {
+		log.Fatal("Error from CallOnChanges:", err.Error())
+	} else {
+		fmt.Printf("ret %+v %+v\n", same, noaction)
+	}
+
+	if changesN != 1 {
+		log.Fatal("Saw invalid amount of changes.")
+	}
+	if startsN != 1 {
+		log.Fatal("Saw invalid amount of start changes.")
+	}
+
+	fmt.Printf("s1.Harry = %s\n", s1.Harry)
+
+	if s1.Harry != "notharry" {
+		log.Fatal("Failed to transfer value")
+	}
+
+}
+
+func TestFillInNilStruct(t *testing.T) {
+	fmt.Printf("TestFillInNilStruct\n")
+
+	a := NewConfigAnalyzer("magicTag")
+
+	if a == nil {
+		log.Fatal("Failed to create config analyzer object")
+	}
+
+	// ChangesStart(configgroup string)
+	// // SawChange is called whenever a field changes. It will be called only once for each field which is changed.
+	// // It will always be called after ChangesStart is called
+	// SawChange(configgroup string, fieldchanged string, value interface{})
+	// // ChangesComplete is called when all changes for a specific configgroup tagname
+	// ChangesComplete(configgroup string)
+
+	changesN := 0
+	startsN := 0
+
+	hookMagic := new(testHook)
+
+	hookMagic.OnChangesStart(func(g string) {
+		fmt.Printf("ChangesStart( %s ) hookMagic\n", g)
+		log.Fatal("Shold not be called - no change here")
+	})
+
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
+		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
+		changesN++
+		return true
+	})
+
+	a.AddHook("groupMagic", hookMagic)
+
+	hookDum := new(testHook)
+
+	hookDum.OnChangesStart(func(g string) {
+		fmt.Printf("ChangesStart( %s ) hookDum\n", g)
+		startsN++
+	})
+
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
+		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
+		changesN++
+		return true
+	})
+
+	a.AddHook("groupDumbledore", hookDum)
+
+	hookWiz := new(testHook)
+
+	hookWiz.OnChangesStart(func(g string) {
+		fmt.Printf("ChangesStart( %s ) hookWiz\n", g)
+		startsN++
+	})
+
+	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
+		fmt.Printf("SawChange( %s ) hookWiz: %s\n", g, field)
+		v, ok := futv.(int)
+		if ok {
+			if v != 7 {
+				log.Fatal("Wrong value for future value: ", v)
+			}
+		} else {
+			log.Fatal("cast failed in OnSawChange for WizardStuff")
+		}
+		changesN++
+		return true
+	})
+
+	a.AddHook("wizardItems", hookWiz)
+
+	s1 := new(testStruct1)
+	s2 := new(testStruct1)
+	s1.AString = "funny"
+	s2.AString = "funny"
+	s1.AnInt = 3
+	s2.AnInt = 3
+	s1.Dumbledore = "yeap"
+	s2.Dumbledore = "yeap"
+	s1.Harry = "harry"
+	s2.Harry = "notharry"
+
+	//	s1.Stuff = new(WizardStuff)
+	s2.Stuff = new(WizardStuff)
+
+	//	s1.Stuff.NumberOfPotions = 3
+	s2.Stuff.NumberOfPotions = 7
+
+	same, noaction, err := a.CallChanges(s1, s2)
+
+	if err != nil {
+		log.Fatal("Error from CallOnChanges:", err.Error())
+	} else {
+		fmt.Printf("ret %+v %+v\n", same, noaction)
+	}
+
+	if changesN != 2 {
+		log.Fatal("Saw invalid amount of changes.")
+	}
+	if startsN != 2 {
+		log.Fatal("Saw invalid amount of start changes.")
+	}
+
+	fmt.Printf("s1.Harry = %s\n", s1.Harry)
+
+	if s1.Stuff != nil {
+		if s1.Stuff.NumberOfPotions != 7 {
+			log.Fatal("Failed to transfer value")
+		}
+	} else {
+		log.Fatal("Failed to create Stuff")
+	}
+
+	if s1.Harry != "notharry" {
+		log.Fatal("Failed to transfer value")
+	}
+
+}

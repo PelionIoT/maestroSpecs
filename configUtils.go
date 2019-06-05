@@ -205,9 +205,19 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 			// deref pointers
 			if k == reflect.Ptr {
 				if fieldval.IsNil() {
-					fmt.Printf("saw nil ptr %s\n", prefix)
+					//					fmt.Printf("saw nil ptr %s\n", prefix)
 					// can't fill in a struct which is nil
-					continue
+					// if we have a nil PTR to a struct, let's create the struct
+					//					t := reflect.TypeOf().Elem()
+					//					t := reflect.TypeOf(fieldval.Elem().Interface())
+					t := field.Type
+					newstruct := reflect.New(t.Elem())
+					if newstruct.IsValid() && fieldval.CanSet() {
+						fieldval.Set(newstruct.Convert(t))
+					} else {
+						fmt.Printf("Error - could not create / assign valid stuct\n")
+						continue
+					}
 				}
 				fieldval = reflect.ValueOf(fieldval.Interface()).Elem()
 				k = fieldval.Kind()
