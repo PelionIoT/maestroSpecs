@@ -106,8 +106,8 @@ func (a *ConfigAnalyzer) callGroupChanges(c *changes) {
 			}
 			takeall := hook.ChangesComplete(c.configgroup)
 			if takeall {
-				for n, cur := range c.curvals {
-					c.curvals[n].Set(cur)
+				for n := range c.curvals {
+					c.curvals[n].Set(c.futvals[n])
 				}
 			}
 		}
