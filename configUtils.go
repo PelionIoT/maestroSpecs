@@ -246,27 +246,101 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 				}
 				continue
 			}
-			if !futval.IsValid() {
-				fmt.Printf("futval is not valid!\n")
-			}
-			if futval.Interface() != fieldval.Interface() {
-				identical = false
-				noaction = false
-				// different values - add to list
-				group, ok := field.Tag.Lookup(a.configTag)
-				if ok {
-					c, ok2 := allchanges[group]
-					if !ok2 {
-						c = new(changes)
-						allchanges[group] = c
-						c.configgroup = group
+			// For slices we treat the slice as a single value,
+			// unless the slice is a slice of struct or ptr to struct
+			if k == reflect.Slice {
+				changed := false
+				curLen := fieldval.Len()
+				N := futval.Len()
+				if curLen != N {
+					changed = true
+				}
+				expand := false
+				for i := 0; i < N; i++ {
+					indexval := futval.Index(i)
+					var curindexval reflect.Value
+					if i < curLen-1 { // if current still has elements...
+						curindexval = fieldval.Index(i)
+					} else {
+						changed = true
+						expand = true
 					}
-					c.fieldnames = append(c.fieldnames, pre+field.Name)
-					c.futvals = append(c.futvals, futval)
-					c.curvals = append(c.curvals, fieldval)
+					typ := indexval.Kind()
+					if typ == reflect.Ptr {
+						typ2 := indexval.Elem().Kind()
+						if typ2 == reflect.Struct {
+							if expand {
+								curindexval = reflect.New(indexval.Elem().Type())
+								fieldval.Set(reflect.Append(fieldval, curindexval))
+							}
+							err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Interface(), indexval.Interface())
+							if err2 != nil {
+								fmt.Printf("Error on compareStruct: %s\n", err2.Error())
+							}
+							continue
+						}
+					} else if typ == reflect.Struct {
+						if expand {
+							// we can't expand a slice of static structs can we?
+						}
+						err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Addr().Interface(), indexval.Addr().Interface())
+						if err2 != nil {
+							fmt.Printf("Error on compareStruct: %s\n", err2.Error())
+						}
+						continue
+					}
+					// its a slice of primitive types or strings
+					// if the future slice is larger than the current, its changed
+					if expand {
+						changed = true
+						break
+					} else {
+						if indexval.Interface() != curindexval.Interface() {
+							changed = true
+							break
+						}
+					}
+					//					break
+					//					fmt.Println(s.Index(i))
+				}
+				if changed {
+					// entire slice is changed
+					// different values - add to list
+					group, ok := field.Tag.Lookup(a.configTag)
+					if ok {
+						c, ok2 := allchanges[group]
+						if !ok2 {
+							c = new(changes)
+							allchanges[group] = c
+							c.configgroup = group
+						}
+						c.fieldnames = append(c.fieldnames, pre+field.Name)
+						c.futvals = append(c.futvals, futval)
+						c.curvals = append(c.curvals, fieldval)
+					}
+				}
+			} else {
+				if !futval.IsValid() {
+					fmt.Printf("futval is not valid!\n")
+				}
+				if futval.Interface() != fieldval.Interface() {
+					identical = false
+					noaction = false
+					// different values - add to list
+					group, ok := field.Tag.Lookup(a.configTag)
+					if ok {
+						c, ok2 := allchanges[group]
+						if !ok2 {
+							c = new(changes)
+							allchanges[group] = c
+							c.configgroup = group
+						}
+						c.fieldnames = append(c.fieldnames, pre+field.Name)
+						c.futvals = append(c.futvals, futval)
+						c.curvals = append(c.curvals, fieldval)
+					}
 				}
 			}
-
 		}
 
 		return
