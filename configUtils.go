@@ -114,23 +114,10 @@ func (a *ConfigAnalyzer) callGroupChanges(c *changes) {
 	}
 }
 
-// CallChanges does a comparison between current and future items. Current and future should be the same
-// type and be a struct. This struct should use struct tags on specific fields, of the format: CONFIGTAG:"SOMEID"
-// where CONFIGTAG is a specific label used throughout the whole struct, to identify a field which belongs to a config group
-// of SOMEID, and referenced with a ConfigChangeHook type handed to ConfigAnalyzer by the AddHook function. The overall
-// structs being compared may have multiple SOMEIDs but should always use the same CONFIGTAG value.
-// The struct tags themselves may be combined with other key/values used for json or YAML encoding or anything else, space separated, which is
-// compatible with the reflect.Lookup function (typical convention for multiple values in a struct tag)
-// Given that this labeling via struct tags is done, then CallChanges will compare 'current' to 'future' by value, for each
-// field in the struct. It will then, after a full comparison is done, call the ConfigChangeHook's methods. See ConfigChangeHook for
-// how these methods are called.
-//
-// NOTE: Technically current and future can have different types, but must have fields with the same names to be compared. The function
-// will only look at field names which are in 'current' and which are public, and which have identical types.
-func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (identical bool, noaction bool, err error) {
-	allchanges := make(map[string]*changes)
+func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (identical bool, noaction bool, allchanges map[string]*changes, err error) {
 	noaction = true
 	identical = true
+	allchanges = make(map[string]*changes)
 	var compareStruct func(prefix string, cur interface{}, fut interface{}) (errinner error)
 	compareStruct = func(prefix string, cur interface{}, fut interface{}) (errinner error) {
 		// loop through - if see struct, call compare struct again, with 'prefix' as the field name of the struct
@@ -168,12 +155,12 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 
 		kind = currValue.Kind()
 		if kind != reflect.Struct {
-			errinner = errors.New("invalid type for current val")
+			errinner = errors.New(fmt.Sprintf("invalid type for current val, expected Struct, actual: %v", kind))
 			return
 		}
 		kind = reflect.ValueOf(fut).Kind()
 		if kind == reflect.Ptr {
-			//			futType = reflect.TypeOf(fut).Elem()
+			//			futType = reflect.TypeOf(fut).Elem()callGroupChanges
 			futValue = reflect.ValueOf(fut).Elem()
 			fmt.Printf("fut kind: %s (ptr)\n", prefix)
 		} else if kind == reflect.Struct {
@@ -187,12 +174,14 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 			return
 		}
 
+		fmt.Printf("fut %v kind: %s curr %v kind: %s\n", futValue, reflect.ValueOf(futValue).Kind(), currValue, reflect.ValueOf(currValue).Kind())
+
 		// using the current struct, walk through each field
 		//		assignToStruct := reflect.ValueOf(opts).Elem()
 		for i := 0; i < currType.NumField(); i++ {
 			field := currType.Field(i)
 			fieldval := currValue.FieldByName(field.Name)
-			fmt.Printf("@ field %s\n", field.Name)
+			fmt.Printf("\n@ field %s\n", field.Name)
 			futval := futValue.FieldByName(field.Name)
 			if !futval.IsValid() {
 				// so the future struct does not even have this field
@@ -223,6 +212,7 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 				k = fieldval.Kind()
 			}
 			if kf == reflect.Ptr {
+				fmt.Printf("\nkf == Ptr")
 				futval = reflect.ValueOf(futval.Interface()).Elem()
 				kf = futval.Kind()
 			}
@@ -233,7 +223,7 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 			}
 
 			if k != kf {
-				// different types, ignore
+				fmt.Printf("\ndifferent types, ignore")
 				identical = false
 				continue
 			}
@@ -352,6 +342,26 @@ func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (i
 	if err != nil {
 		return
 	}
+
+	return
+}
+
+// CallChanges does a comparison between current and future items. Current and future should be the same
+// type and be a struct. This struct should use struct tags on specific fields, of the format: CONFIGTAG:"SOMEID"
+// where CONFIGTAG is a specific label used throughout the whole struct, to identify a field which belongs to a config group
+// of SOMEID, and referenced with a ConfigChangeHook type handed to ConfigAnalyzer by the AddHook function. The overall
+// structs being compared may have multiple SOMEIDs but should always use the same CONFIGTAG value.
+// The struct tags themselves may be combined with other key/values used for json or YAML encoding or anything else, space separated, which is
+// compatible with the reflect.Lookup function (typical convention for multiple values in a struct tag)
+// Given that this labeling via struct tags is done, then CallChanges will compare 'current' to 'future' by value, for each
+// field in the struct. It will then, after a full comparison is done, call the ConfigChangeHook's methods. See ConfigChangeHook for
+// how these methods are called.
+//
+// NOTE: Technically current and future can have different types, but must have fields with the same names to be compared. The function
+// will only look at field names which are in 'current' and which are public, and which have identical types.
+func (a *ConfigAnalyzer) CallChanges(current interface{}, future interface{}) (identical bool, noaction bool, err error) {
+	
+	identical, noaction, allchanges, err := a.DiffChanges(current, future) 
 
 	// walk through changes, calling the callbacks as needed
 	if !noaction {
