@@ -49,7 +49,8 @@ type ConfigChangeHook interface {
 	// SawChange is called whenever a field changes. It will be called only once for each field which is changed.
 	// It will always be called after ChangesStart is called
 	// If SawChange return true, then the value of futvalue will replace the value of current value
-	SawChange(configgroup string, fieldchanged string, futvalue interface{}, curvalue interface{}) (acceptchange bool)
+	// Index is valid if the value is >=0, in that case it indicates the index of the item in a slice
+	SawChange(configgroup string, fieldchanged string, futvalue interface{}, curvalue interface{}, index int) (acceptchange bool)
 	// ChangesComplete is called when all changes for a specific configgroup tagname
 	// If ChangesComplete returns true, then all changes in that group will be assigned to the current struct
 	ChangesComplete(configgroup string) (acceptallchanges bool)
@@ -90,16 +91,19 @@ type changes struct {
 	curvals    []reflect.Value
 	//	curValues   []reflect.Value
 	configgroup string // which config group this is
+	index	[]int; // this is valid if the value is >=0, in that case it indicates the index of the item in a slice
 }
 
 func (a *ConfigAnalyzer) callGroupChanges(c *changes) {
 	hooki, ok := a.configMap.Load(c.configgroup)
+
 	if ok {
 		hook, ok2 := hooki.(ConfigChangeHook)
 		if ok2 {
 			hook.ChangesStart(c.configgroup)
 			for n, fieldname := range c.fieldnames {
-				takeit := hook.SawChange(c.configgroup, fieldname, c.futvals[n].Interface(), c.curvals[n].Interface())
+				
+				takeit := hook.SawChange(c.configgroup, fieldname, c.futvals[n].Interface(), c.curvals[n].Interface(), c.index[n])
 				if takeit {
 					c.curvals[n].Set(c.futvals[n])
 				}
@@ -118,8 +122,8 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 	noaction = true
 	identical = true
 	allchanges = make(map[string]*changes)
-	var compareStruct func(prefix string, cur interface{}, fut interface{}) (errinner error)
-	compareStruct = func(prefix string, cur interface{}, fut interface{}) (errinner error) {
+	var compareStruct func(prefix string, cur interface{}, fut interface{}, index int) (errinner error)
+	compareStruct = func(prefix string, cur interface{}, fut interface{}, index int) (errinner error) {
 		// loop through - if see struct, call compare struct again, with 'prefix' as the field name of the struct
 
 		// first ensure its a struct or pointer to struct, and dereference if needed
@@ -130,7 +134,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 		kind := reflect.ValueOf(cur).Kind()
 		if kind == reflect.Ptr {
 			currType = reflect.TypeOf(cur).Elem()
-			fmt.Printf("cur kind: %s (ptr)\n", prefix)
+			//fmt.Printf("cur kind: %s (ptr)\n", prefix)
 			currValue = reflect.ValueOf(cur).Elem()
 		} else if kind == reflect.Struct {
 			if len(prefix) < 1 {
@@ -143,7 +147,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 			// XXX reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
 			// no - we fixed this below with .Addr().Interface()
 			currType = reflect.TypeOf(cur)
-			fmt.Printf("cur kind: %s (struct)\n", prefix)
+			//fmt.Printf("cur kind: %s (struct)\n", prefix)
 			//			currValue = reflect.ValueOf(cur)
 			//			currValue = reflect.NewAt(currType, unsafe.Pointer(reflect.ValueOf(cur).UnsafeAddr())).Elem()
 			//			currValue = reflect.NewAt(currType, unsafe.Pointer(&cur)).Elem()
@@ -162,11 +166,11 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 		if kind == reflect.Ptr {
 			//			futType = reflect.TypeOf(fut).Elem()callGroupChanges
 			futValue = reflect.ValueOf(fut).Elem()
-			fmt.Printf("fut kind: %s (ptr)\n", prefix)
+			//fmt.Printf("fut kind: %s (ptr)\n", prefix)
 		} else if kind == reflect.Struct {
 			//			futType = reflect.TypeOf(fut)
 			futValue = reflect.ValueOf(fut)
-			fmt.Printf("fut kind: %s (struct)\n", prefix)
+			//fmt.Printf("fut kind: %s (struct)\n", prefix)
 		}
 		kind = futValue.Kind()
 		if kind != reflect.Struct {
@@ -174,14 +178,14 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 			return
 		}
 
-		fmt.Printf("fut %v kind: %s curr %v kind: %s\n", futValue, reflect.ValueOf(futValue).Kind(), currValue, reflect.ValueOf(currValue).Kind())
+		//fmt.Printf("Vals: \n\tfut %v kind: %s \n\tcurr %v kind: %s\n", futValue, reflect.ValueOf(futValue).Kind(), currValue, reflect.ValueOf(currValue).Kind())
 
 		// using the current struct, walk through each field
 		//		assignToStruct := reflect.ValueOf(opts).Elem()
 		for i := 0; i < currType.NumField(); i++ {
 			field := currType.Field(i)
 			fieldval := currValue.FieldByName(field.Name)
-			fmt.Printf("\n@ field %s\n", field.Name)
+			//fmt.Printf("\n@ field %s\n", field.Name)
 			futval := futValue.FieldByName(field.Name)
 			if !futval.IsValid() {
 				// so the future struct does not even have this field
@@ -212,7 +216,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 				k = fieldval.Kind()
 			}
 			if kf == reflect.Ptr {
-				fmt.Printf("\nkf == Ptr")
+				//fmt.Printf("\nkf == Ptr")
 				futval = reflect.ValueOf(futval.Interface()).Elem()
 				kf = futval.Kind()
 			}
@@ -229,7 +233,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 			}
 			if k == reflect.Struct {
 				// it is crtical to pass in as an Interface which is an Address
-				e := compareStruct(pre+field.Name, fieldval.Addr().Interface(), futval.Addr().Interface())
+				e := compareStruct(pre+field.Name, fieldval.Addr().Interface(), futval.Addr().Interface(), index)
 				if e != nil {
 					errinner = e
 					return
@@ -245,11 +249,12 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 				if curLen != N {
 					changed = true
 				}
+				//fmt.Printf("\nSlice lengths cur:%d fut:%d\n",curLen, N)
 				expand := false
 				for i := 0; i < N; i++ {
 					indexval := futval.Index(i)
 					var curindexval reflect.Value
-					if i < curLen-1 { // if current still has elements...
+					if i < curLen { // if current still has elements...
 						curindexval = fieldval.Index(i)
 					} else {
 						changed = true
@@ -263,7 +268,9 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 								curindexval = reflect.New(indexval.Elem().Type())
 								fieldval.Set(reflect.Append(fieldval, curindexval))
 							}
-							err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Interface(), indexval.Interface())
+							//fmt.Printf("\nField Name: %s[%d]\n", field.Name, i)
+							//fmt.Printf("\nCalling compareStruct(ptr): %s for idx=%d\n", field.Name, i)
+							err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Interface(), indexval.Interface(), i)
 							if err2 != nil {
 								fmt.Printf("Error on compareStruct: %s\n", err2.Error())
 							}
@@ -273,7 +280,8 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 						if expand {
 							// we can't expand a slice of static structs can we?
 						}
-						err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Addr().Interface(), indexval.Addr().Interface())
+						//fmt.Printf("\nCalling compareStruct: %s for idx=%d\n", field.Name, i)
+						err2 := compareStruct(fmt.Sprintf("%s[%d]", pre+field.Name, i), curindexval.Addr().Interface(), indexval.Addr().Interface(), i)
 						if err2 != nil {
 							fmt.Printf("Error on compareStruct: %s\n", err2.Error())
 						}
@@ -307,6 +315,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 						c.fieldnames = append(c.fieldnames, pre+field.Name)
 						c.futvals = append(c.futvals, futval)
 						c.curvals = append(c.curvals, fieldval)
+						c.index = append(c.index, index)
 					}
 				}
 			} else {
@@ -328,6 +337,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 						c.fieldnames = append(c.fieldnames, pre+field.Name)
 						c.futvals = append(c.futvals, futval)
 						c.curvals = append(c.curvals, fieldval)
+						c.index = append(c.index, index)
 					}
 				}
 			}
@@ -338,7 +348,7 @@ func (a *ConfigAnalyzer) DiffChanges(current interface{}, future interface{}) (i
 
 	//	kind := reflect.ValueOf(current).Kind()
 
-	err = compareStruct("", current, future)
+	err = compareStruct("", current, future, -1)
 	if err != nil {
 		return
 	}
