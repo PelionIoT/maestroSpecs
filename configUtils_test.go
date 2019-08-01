@@ -95,7 +95,7 @@ func TestMain(m *testing.M) {
 
 type testHook struct {
 	a func(g string)
-	b func(g string, f string, v interface{}, v2 interface{}) bool
+	b func(g string, f string, v interface{}, v2 interface{}, index int) bool
 	c func(g string) bool
 }
 
@@ -105,9 +105,9 @@ func (hook *testHook) ChangesStart(g string) {
 	}
 }
 
-func (hook *testHook) SawChange(g string, field string, curv interface{}, futv interface{}) (ret bool) {
+func (hook *testHook) SawChange(g string, field string, curv interface{}, futv interface{}, index int) (ret bool) {
 	if hook.b != nil {
-		ret = hook.b(g, field, curv, futv)
+		ret = hook.b(g, field, curv, futv, index)
 	}
 	return
 }
@@ -123,7 +123,7 @@ func (hook *testHook) OnChangesStart(p func(string)) {
 	hook.a = p
 }
 
-func (hook *testHook) OnSawChange(p func(g string, field string, curv interface{}, futv interface{}) bool) {
+func (hook *testHook) OnSawChange(p func(g string, field string, curv interface{}, futv interface{}, index int) bool) {
 	hook.b = p
 }
 
@@ -160,7 +160,7 @@ func TestBasicConf1(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		changesN++
 		return true
@@ -175,7 +175,7 @@ func TestBasicConf1(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		changesN++
 		return true
@@ -246,7 +246,7 @@ func TestBasicConf1Ptr(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -262,7 +262,7 @@ func TestBasicConf1Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -332,7 +332,7 @@ func TestDeeperConf1Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -348,7 +348,7 @@ func TestDeeperConf1Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -423,7 +423,7 @@ func TestDeeperConf2Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -440,7 +440,7 @@ func TestDeeperConf2Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookStuff.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookStuff.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookStuff: %s\n", g, field)
 		changesN++
@@ -455,7 +455,7 @@ func TestDeeperConf2Ptr(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -544,7 +544,7 @@ func TestNonCongruentStructs(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -560,7 +560,7 @@ func TestNonCongruentStructs(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -629,7 +629,7 @@ func TestFillInNilStruct(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -645,7 +645,7 @@ func TestFillInNilStruct(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -661,7 +661,7 @@ func TestFillInNilStruct(t *testing.T) {
 		startsN++
 	})
 
-	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookWiz: %s\n", g, field)
 		v, ok := futv.(int)
@@ -752,7 +752,7 @@ func TestTakeAllChanges(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -768,7 +768,7 @@ func TestTakeAllChanges(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -789,7 +789,7 @@ func TestTakeAllChanges(t *testing.T) {
 		startsN++
 	})
 
-	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookWiz: %s\n", g, field)
 		v, ok := futv.(int)
@@ -877,6 +877,7 @@ func TestFillInWithSlice(t *testing.T) {
 
 	changesN := 0
 	startsN := 0
+	indexFailed := false
 
 	hookMagic := new(testHook)
 
@@ -885,7 +886,7 @@ func TestFillInWithSlice(t *testing.T) {
 		log.Fatal("Shold not be called - no change here")
 	})
 
-	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookMagic.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookMagic: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookMagic: %s\n", g, field)
 		changesN++
@@ -901,7 +902,7 @@ func TestFillInWithSlice(t *testing.T) {
 		startsN++
 	})
 
-	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookDum.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookDum: %s\n", g, field)
 		changesN++
@@ -917,7 +918,7 @@ func TestFillInWithSlice(t *testing.T) {
 		startsN++
 	})
 
-	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookWiz.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookWiz: %s\n", g, field)
 		v, ok := futv.(int)
@@ -941,7 +942,7 @@ func TestFillInWithSlice(t *testing.T) {
 		//		startsN++
 	})
 
-	hookFood.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookFood.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
 		fmt.Printf("SawChange( %s ) hookFood: %s\n", g, field)
 		//		changesN++
@@ -957,10 +958,20 @@ func TestFillInWithSlice(t *testing.T) {
 		//		startsN++
 	})
 
-	hookFoodItem.OnSawChange(func(g string, field string, futv interface{}, curv interface{}) bool {
+	hookFoodItem.OnSawChange(func(g string, field string, futv interface{}, curv interface{}, index int) bool {
 		//		fmt.Printf("SawChange( %s ) hookDum: %s: %+v --> %+v\n", g, field, curv, futv)
-		fmt.Printf("SawChange( %s ) hookFoodItem: %s\n", g, field)
+		fmt.Printf("SawChange( %s ) hookFoodItem: %s futval:%s index:%d\n", g, field, futv, index)
 		//		changesN++
+		if(futv == "apples") {
+			if(index != 0) {
+				indexFailed = true;
+			}
+		}
+		if(futv == "oranges") {
+			if(index != 1) {
+				indexFailed = true;
+			}
+		}
 		return true
 	})
 
@@ -994,6 +1005,12 @@ func TestFillInWithSlice(t *testing.T) {
 	s2.Stuff.NumberOfPotions = 7
 
 	same, noaction, err := a.CallChanges(s1, s2)
+
+	if indexFailed {
+		log.Fatal("Error from OnSawChange, index value mismatch")
+	} else {
+		fmt.Printf("indexFailed %+v\n", indexFailed)
+	}
 
 	if err != nil {
 		log.Fatal("Error from CallOnChanges:", err.Error())
