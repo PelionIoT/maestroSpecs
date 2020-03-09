@@ -1,7 +1,9 @@
 package maestroSpecs
+
 import (
 	"github.com/armPelionEdge/greasego"
 )
+
 // Copyright (c) 2018, Arm Limited and affiliates.
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,20 +19,24 @@ import (
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A Logger interface is passed to some Maestro plugins, allowing the 
+// A Logger interface is passed to some Maestro plugins, allowing the
 // plugin to Log to Maestro's internal logs, as part of the Maestro
 // process.
 type Logger interface {
-    Info(a ...interface{})
-    Infof(format string, a ...interface{})
-    Success(a ...interface{})
-    Successf(format string, a ...interface{})
-    Warn(a ...interface{})
-    Warnf(format string, a ...interface{})
-    Error(a ...interface{})
-    Errorf(format string, a ...interface{})
-    Debug(a ...interface{})
-    Debugf(format string, a ...interface{})
+	Info(a ...interface{})
+	Infof(format string, a ...interface{})
+	Success(a ...interface{})
+	Successf(format string, a ...interface{})
+	Warn(a ...interface{})
+	Warnf(format string, a ...interface{})
+	Error(a ...interface{})
+	Errorf(format string, a ...interface{})
+	Debug(a ...interface{})
+	Debugf(format string, a ...interface{})
+}
+
+type LogConfigPayload struct {
+	Targets []*LogTarget `yaml:"targets" json:"targets"`
 }
 
 type LogRotate struct {
@@ -57,6 +63,7 @@ type LogTarget struct {
 	FormatPreMsg             string                           `yaml:"format_pre_msg,omitempty" greaseAssign:"Format_pre_msg" log_group:"format"`
 	Name                     string                           `yaml:"name,omitempty" greaseAssign:"Name" log_group:"name"`
 	Flag_json_escape_strings bool                             `yaml:"flag_json_escape_strings"`
+	Existing                 string                           `yaml:"existing" json:"existing" log_group:"config_opts"`
 }
 
 type LogFormat struct {
