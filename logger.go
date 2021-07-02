@@ -30,7 +30,3 @@ type Logger interface {
 	Debug(a ...interface{})
 	Debugf(format string, a ...interface{})
 }
-
-type LogConfigPayload struct {
-	Targets []*LogTarget `yaml:"targets" json:"targets" log_group:"targets"`
-}
