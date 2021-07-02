@@ -15,8 +15,6 @@ package maestroSpecs;
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const DefaultUnixLogSocketSink = "/tmp/grease.sock"
-
 const NUMBER_BANKS_WEBLOG = uint32(20)
 
 const MAX_QUEUED_PROCESS_EVENTS = 100
